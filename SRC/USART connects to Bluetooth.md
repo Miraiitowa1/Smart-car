@@ -52,24 +52,86 @@ void Serial_Init(void)
 	USART_Cmd(USART1, ENABLE);
 }
 
+void Serial_SendByte(uint8_t Byte)
+{
+	USART_SendData(USART1, Byte);
+	while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+}
+
+void Serial_SendArray(uint8_t *Array, uint16_t Length)
+{
+	uint16_t i;
+	for (i = 0; i < Length; i ++)
+	{
+		Serial_SendByte(Array[i]);
+	}
+}
+
+void Serial_SendString(char *String)
+{
+	uint8_t i;
+	for (i = 0; String[i] != '\0'; i ++)
+	{
+		Serial_SendByte(String[i]);
+	}
+}
+
+uint32_t Serial_Pow(uint32_t X, uint32_t Y)
+{
+	uint32_t Result = 1;
+	while (Y --)
+	{
+		Result *= X;
+	}
+	return Result;
+}
+
+void Serial_SendNumber(uint32_t Number, uint8_t Length)
+{
+	uint8_t i;
+	for (i = 0; i < Length; i ++)
+	{
+		Serial_SendByte(Number / Serial_Pow(10, Length - i - 1) % 10 + '0');
+	}
+}
+
+int fputc(int ch, FILE *f)
+{
+	Serial_SendByte(ch);
+	return ch;
+}
+
+void Serial_Printf(char *format, ...)
+{
+	char String[100];
+	va_list arg;
+	va_start(arg, format);
+	vsprintf(String, format, arg);
+	va_end(arg);
+	Serial_SendString(String);
+}
+
+
 中断
 void USART1_IRQHandler(void)
 {
 	if (USART_GetITStatus(USART1, USART_IT_RXNE) == SET)
 	{
-		uint16_t Data = USART_ReceiveData(USART1);
-		switch(Data)
-		{
-			case 0x00 : Car_Stop(); break;
-			case 0x01 : Go_Ahead(); break;
-			case 0x02 : Go_Back();  break;
-			case 0x03 : Turn_Left();break;
-			case 0x04 : Turn_Right();break;
-			case 0x05 : Self_Left();break;
-			case 0x06 : Self_Right();break;	
-		}
+		Data = USART_ReceiveData(USART1);
+		if(Data == 0x30) Car_Stop();
+		if(Data == 0x31) Go_Ahead();
+		if(Data == 0x32) Go_Back();
+		if(Data == 0x33) Turn_Left();
+		if(Data == 0x34) Turn_Right();
+		if(Data == 0x35) Self_Left();
+		if(Data == 0x36) Self_Right();
+		
+		if(Data == 0x37)Servo_SetAngle(90);
+		if(Data == 0x38)Servo_SetAngle(45);
+		if(Data == 0x39)Servo_SetAngle(135);
+		
 		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
-	}	
+	}
 }
 ```
 
